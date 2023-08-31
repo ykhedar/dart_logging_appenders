@@ -16,10 +16,8 @@ SyslogLevel _defaultToSyslogLevel(Level level) {
   );
 }
 
-/// Graylog Http appender https://go2docs.graylog.org/5-0/getting_in_log_data/ingest_gelf.html?tocpath=Getting%20in%20Logs%7CLog%20Sources%7CGELF%7C_____1
-/// BULK receiving *must* be enabled. (enable_bulk_receiving)
-class GelfHttpAppender extends BaseDioLogSender {
-  GelfHttpAppender({
+class FluentdHttpAppender extends BaseDioLogSender {
+  FluentdHttpAppender({
     required this.endpoint,
     required this.host,
     this.toLogLevel = _defaultToSyslogLevel,
@@ -58,7 +56,7 @@ class GelfHttpAppender extends BaseDioLogSender {
                   e.line,
                 )
               : (e.line, null);
-          final payload = GelfPayload(
+          final payload = FluentDPayload(
             logLevel: toLogLevel(e.logLevel),
             host: host,
             shortMessage: shortMessage,
@@ -120,8 +118,8 @@ enum SyslogLevel {
   final Level loggingLevel;
 }
 
-class GelfPayload {
-  GelfPayload({
+class FluentDPayload {
+  FluentDPayload({
     required this.logLevel,
     required this.host,
     required this.shortMessage,
@@ -145,14 +143,4 @@ class GelfPayload {
         // timestamps must be seconds, but can have decimal places.
         'timestamp': (timestamp.millisecondsSinceEpoch / 1000.0),
       };
-}
-
-class LokiStream {
-  LokiStream(this.labels, this.entries);
-
-  final String labels;
-  final List<LogEntry> entries;
-
-  Map<String, dynamic> toJson() =>
-      <String, dynamic>{'labels': labels, 'entries': entries};
 }
