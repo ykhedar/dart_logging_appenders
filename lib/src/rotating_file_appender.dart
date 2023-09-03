@@ -109,6 +109,9 @@ class RotatingFileAppender extends BaseLogAppender {
 
   /// rotates the file, if it is larger than [rotateAtSizeBytes]
   Future<bool> _maybeRotate() async {
+    if (File(baseFilePath).existsSync() == false) {
+      return false;
+    }
     if (_nextRotateCheck?.isAfter(clock.now()) != false) {
       return false;
     }
