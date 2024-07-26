@@ -93,14 +93,23 @@ abstract class BaseLogSender extends BaseLogAppender {
   }
 
   Future<void> flush() => _triggerSendLogEvents();
+
+  @override
+  Future<void> dispose() async {
+    try {
+      await flush();
+    } finally {
+      await super.dispose();
+    }
+  }
 }
 
 /// Helper base class to handle Dio errors during network requests.
 abstract class BaseDioLogSender extends BaseLogSender {
   BaseDioLogSender({
-    LogRecordFormatter? formatter,
-    int? bufferSize,
-  }) : super(formatter: formatter, bufferSize: bufferSize);
+    super.formatter,
+    super.bufferSize,
+  });
 
   Future<void> sendLogEventsWithDio(List<LogEntry> entries,
       Map<String, String> userProperties, CancelToken cancelToken);

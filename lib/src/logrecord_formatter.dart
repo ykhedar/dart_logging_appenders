@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:logging/logging.dart';
+import 'package:logging_appenders/src/exception_chain.dart';
 import 'internal/ansi.dart' as ansi;
 
 /// Base class for formatters which are responsible for converting
@@ -29,28 +32,50 @@ class BlockFormatter extends LogRecordFormatter {
   }
 }
 
+typedef CausedByInfo = ({Object error, StackTrace? stack});
+typedef CausedByInfoFetcher = CausedByInfo? Function(Object? error);
+
 /// Opinionated log formatter which will give a decent format of [LogRecord]
 /// and adds stack trace and error messages if they are available.
 class DefaultLogRecordFormatter extends LogRecordFormatter {
   const DefaultLogRecordFormatter();
+
+  static List<CausedByInfoFetcher> causedByFetchers = [
+    (error) => error is Exception ? error.getCausedByException() : null,
+    (error) => error is JsonUnsupportedObjectError && error.cause != null
+        ? (error: error.cause ?? '', stack: null)
+        : null,
+  ];
 
   @override
   StringBuffer formatToStringBuffer(LogRecord rec, StringBuffer sb) {
     sb.write('${rec.time} ${rec.level.name} '
         '${rec.loggerName} - ${rec.message}');
 
-    if (rec.error != null) {
-      sb.writeln();
-      sb.write('### ${rec.error?.runtimeType}: ');
-      sb.write(rec.error);
+    void formatErrorAndStackTrace(final Object? error, StackTrace? stackTrace) {
+      if (error != null) {
+        sb.writeln();
+        sb.write('### ${error.runtimeType}: ');
+        sb.write(error);
+      }
+      // ignore: avoid_as
+      final stack = stackTrace ?? (error is Error ? (error).stackTrace : null);
+      if (stack != null) {
+        sb.writeln();
+        sb.write(stack);
+      }
+      final causedBy = causedByFetchers
+          .map((e) => e(error))
+          .where((x) => x != null)
+          .firstOrNull;
+      if (causedBy != null) {
+        sb.write('### Caused by: ');
+        formatErrorAndStackTrace(causedBy.error, causedBy.stack);
+      }
     }
-    // ignore: avoid_as
-    final stackTrace = rec.stackTrace ??
-        (rec.error is Error ? (rec.error as Error).stackTrace : null);
-    if (stackTrace != null) {
-      sb.writeln();
-      sb.write(stackTrace);
-    }
+
+    formatErrorAndStackTrace(rec.error, rec.stackTrace);
+
     return sb;
   }
 }
